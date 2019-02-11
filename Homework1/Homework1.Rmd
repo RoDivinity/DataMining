@@ -13,7 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include = FALSE}
 # library initialization
 library(tidyverse)
-data <- read.csv("~/Downloads/greenbuildings.csv") #change link of file here to Github
+data_file <- 'https://raw.githubusercontent.com/RoDivinity/DataMining/master/Data/greenbuildings.csv'
+data <- read.csv(url(data_file), stringsAsFactors=FALSE)
 #tidying the data, classify the size of property into 4 categories
 data$size_class <- ifelse (data$size <= 50891, "small" , ifelse
                            (data$size <= 128838, "medium", ifelse
@@ -244,7 +245,8 @@ library(FNN)
 library(tidyverse)
 
 #load data file
-sclass <- read.csv('~/Downloads/sclass.csv')
+data_file <- "https://raw.githubusercontent.com/RoDivinity/DataMining/master/Data/sclass.csv"
+sclass <- read.csv(url(data_file), stringsAsFactors=FALSE)
 
 #The variables involved
 summary(sclass)
