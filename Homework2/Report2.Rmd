@@ -1,0 +1,729 @@
+---
+title: "Homework 2"
+author: "Linh Nguyen"
+date: "3/15/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#loading all library used in this homework
+library(tidyverse)
+library(mosaic)
+library(class)
+library(FNN)
+library(knitr)
+```
+
+#Question 1
+
+```{r setup_q1, echo=FALSE, warning=FALSE}
+data(SaratogaHouses)
+
+#the medium model to outperform (baseline for comparison)
+lm_medium = lm(price ~ lotSize + age + livingArea + pctCollege + bedrooms + 
+                 fireplaces + bathrooms + rooms + heating + fuel + centralAir, data=SaratogaHouses)
+
+#my "hand-built" model to test
+lm_model = lm(price ~ (. - sewer - waterfront - fireplaces - rooms )*age, data=SaratogaHouses)
+  
+#stock function to calculate root mean square error
+rmse = function(y, yhat) {
+  sqrt( mean( (y - yhat)^2 ) )
+}
+#####
+# part 1: build a model to outperform the benchmark model
+# The model hand build
+#   y: price
+#   x variables: - fireplaces - rooms - heating -fuel -waterfront -sewer
+###
+
+####
+# Compare out-of-sample predictive performance
+####
+
+#count number of obs
+n = nrow(SaratogaHouses)
+
+rmse_vals = do(100)*{
+  
+  # re-split into train and test cases
+  n_train = round(0.8*n)  # round to nearest integer
+  n_test = n - n_train
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  saratoga_train = SaratogaHouses[train_cases,]
+  saratoga_test = SaratogaHouses[test_cases,]
+ 
+  
+  # fit to this training set
+  
+  #baseline model for comparison first
+  lm_medium = lm(price ~ lotSize + age + livingArea + pctCollege + bedrooms + 
+                   fireplaces + bathrooms + rooms + heating + fuel + centralAir, data=saratoga_train)
+  
+  #hand-built model
+  lm_model = lm(price ~ (. - sewer - waterfront - fireplaces - rooms ), data=saratoga_train)
+  
+  #predict on this testing set
+  yhat_baseline_test = predict(lm_medium, saratoga_test)
+  yhat_model_test = predict(lm_model, saratoga_test)
+  
+  c(rmse(saratoga_test$price, yhat_baseline_test),
+    rmse(saratoga_test$price, yhat_model_test))
+}
+
+#rmse_vals
+avgRMSE_1 = colMeans(rmse_vals)%>%round(3)
+test_case <- seq(1,100,by=1)
+rmse_vals1 = cbind(rmse_vals, test_case)
+colnames(rmse_vals1) <- c("baseline" , "model" , "test case")
+colnames(rmse_vals) <- c("baseline" , "model")
+```
+
+The purpose of this report is to demonstrate the performance of modelling housing price in Saratoga. 
+I compare baseline model, referring in class as "medium" model with my "hand-built" model.
+The criteria for evaluating performance is root mean squared error (RMSE). 
+
+```{r plot1, echo=FALSE, warning=FALSE}
+plot1 = ggplot() +
+      geom_point(data =rmse_vals1 , aes(x = test_case , y=baseline), color = "red") + geom_line(data =rmse_vals1 , aes(x = test_case , y=baseline),colour = "red") +
+      geom_point(data =rmse_vals1 , aes(x = test_case , y=model), color = "blue") + geom_line(data =rmse_vals1 , aes(x = test_case , y=model),color = 'blue') +
+      labs(title = "RMSE across Monte Carlo Simulations", x = "test case", y = "RMSE") +
+      theme(plot.title = element_text(hjust = 0.5))
+plot1
+```
+
+As we observe, the RMSE for "hand-built" model has lower RMSE for most of Monte Carlo training-testing split compare to the baseline mode. The average RMSE is listed below:
+
+```{r table_avgRMSE, echo=FALSE, warning=FALSE}
+kable(colMeans(rmse_vals), col.names = c("AVG RMSE"), caption = "The Average RMSE",padding = 2, align = "c")
+```
+
+By trials and errors, I test different interactions and combinations of factors such as land value, heating system, fuel/gas usage, number of rooms to modify the "hand-build" model to obtain the best model. 
+In further details, my "hand-built" model has the following regression results:
+
+```{r table_2.1.2, echo=FALSE, warning=FALSE}
+reg_table = summary(lm(price ~ (. - sewer - waterfront - fireplaces - rooms )*age, data=SaratogaHouses))
+kable(as.data.frame(reg_table["coefficients"]), caption = "Regression Result for Hand-built Model",padding = 1, align = "c")
+```
+
+As we observe from the table, the most important factor is the land value. Looking at the very high t-value, we can conclude that this regressor is statistically significant in explaining the price of house. Similarly, the living area also plays an important role in explaining the price of house.
+
+From the model, an interesting phenomenon is the age of the building interacts well with central heating system in influencing the price of the house as t-value for this coefficient suggests statistical significance. This is understandable that central heating system will be limited to outdated houses. The presence of central heating system indicates the relative comfort of having comfortable living environment, hence people will pay more for old buildings that include central heating system.
+
+The indicator of new construction is also a significance price signal for housing according to my model.
+
+
+
+Next, I compare my "hand-built" model with KNN model
+
+```{r setup_q1_2,  echo=FALSE, warning=FALSE}
+###
+# Part 2: Use KNN to predict and compare the accuracyy
+####
+
+#table to store average rmse for each K, starting from K = 2 
+KNN_rmse <- data.frame(matrix(ncol = 2, nrow = 0))
+
+
+for (k in 3:30){
+  #count number of obs
+  n = nrow(SaratogaHouses)
+  
+  #inner loop to calculate average over randomness of split
+  rmse_vals = do(100)* {
+  
+  # re-split into train and test cases
+  n_train = round(0.8*n)  # round to nearest integer
+  n_test = n - n_train
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  saratoga_train = SaratogaHouses[train_cases,]
+  saratoga_test = SaratogaHouses[test_cases,]  
+    
+  # construct the training and test-set feature matrices
+  Xtrain = model.matrix(~ . - (price + sewer + waterfront + landValue + newConstruction) - 1, data=saratoga_train)
+  Xtest = model.matrix(~ . - (price + sewer + waterfront + landValue + newConstruction) - 1, data=saratoga_test)
+  
+  # training and testing set responses
+  ytrain = saratoga_train$price
+  ytest = saratoga_test$price
+  
+  # now rescale/standardize
+  scale_train = apply(Xtrain, 2, sd)  # calculate std dev for each column
+  Xtilde_train = scale(Xtrain, scale = scale_train)
+  Xtilde_test = scale(Xtest, scale = scale_train)  # use the training set scales
+  
+  # fit the model
+  knn_model = knn.reg(Xtilde_train, Xtilde_test, ytrain, k = k)
+  
+  # calculate test-set performance
+  rmse(ytest, knn_model$pred)
+  }
+  #print(colMeans(rmse_vals))
+  #newK<-data.frame( k , colMeans(rmse_vals))
+  
+  KNN_rmse <- rbind( KNN_rmse , c(k , colMeans(rmse_vals)))
+}
+
+colnames(KNN_rmse) <- c("K_value", "average_RMSE")
+optimal_k <- KNN_rmse$K_value[which.min(KNN_rmse$average_RMSE)]
+min <- which.min(KNN_rmse$average_RMSE)
+```
+
+```{r KNN_graph, echo=FALSE, warning=FALSE}
+ggplot(data = KNN_rmse, aes(x = K_value, y = average_RMSE)) + 
+  geom_point(shape = "O") +geom_line(color = 'blue') +
+  labs(title = "Average KNN over K" , x = "K" , y = "Avg RMSE")
+```
+
+The optimal K after repeating KNN regressions with different K on several train-test splits is `r optimal_k`. The lowest average RMSE obtained is `r min`
+
+Final step to validate that my "hand-built" model outperform both KNN regression and baseline model is to test the three model on the same training-testing sample. I will repeat this process several times to eliminate the randomness occurs by random sampling.
+
+```{r same_sample, echo=FALSE, warning=FALSE}
+#Find the optimal K, then now conduct a 2nd round to choose the best model, whether hand picked or KNN better
+
+times = 10
+rmse_comp = do(times)*{
+  
+  # re-split into train and test cases
+  n_train = round(0.8*n)  # round to nearest integer
+  n_test = n - n_train
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  saratoga_train = SaratogaHouses[train_cases,]
+  saratoga_test = SaratogaHouses[test_cases,]
+  
+  # construct the training and test-set feature matrices
+  Xtrain = model.matrix(~ . - (price + sewer + waterfront + landValue + newConstruction) - 1, data=saratoga_train)
+  Xtest = model.matrix(~ . - (price + sewer + waterfront + landValue + newConstruction) - 1, data=saratoga_test)
+  
+  # training and testing set responses
+  ytrain = saratoga_train$price
+  ytest = saratoga_test$price
+  
+  # now rescale/standardize
+  scale_train = apply(Xtrain, 2, sd)  # calculate std dev for each column
+  Xtilde_train = scale(Xtrain, scale = scale_train)
+  Xtilde_test = scale(Xtest, scale = scale_train)  # use the training set scales
+  
+  
+  # fit the knn model
+  knn_model = knn.reg(Xtilde_train, Xtilde_test, ytrain, k = optimal_k)
+  
+  #baseline model for comparison first
+  lm_medium = lm(price ~ lotSize + age + livingArea + pctCollege + bedrooms + 
+                   fireplaces + bathrooms + rooms + heating + fuel + centralAir, data=saratoga_train)
+  
+  #hand-built model
+  lm_model = lm(price ~ (. - sewer - waterfront - fireplaces - rooms ), data=saratoga_train)
+  
+  #predict on this testing set
+  yhat_baseline_test = predict(lm_medium, saratoga_test)
+  yhat_model_test = predict(lm_model, saratoga_test)
+  
+  # calculate test-set performance
+  c(rmse(saratoga_test$price, yhat_baseline_test),
+    rmse(saratoga_test$price, yhat_model_test),
+    rmse(ytest, knn_model$pred) )
+}
+case <- seq(1,times,by=1)
+rmse_comp1 = cbind(case, rmse_comp)
+colnames(rmse_comp1) <- c("case", "baseline" , "hand_built" , "knn")  
+colnames(rmse_comp) <- c( "baseline" , "hand_built" , "knn")  
+
+
+graph <- ggplot() +
+  #graph for baseline model
+  geom_point(data = rmse_comp1, aes(x = case , y = baseline), color = "black") +
+  geom_line(data = rmse_comp1 ,aes(x = case , y = baseline), color = "gray" ) +
+  #geom_smooth(data = rmse_comp ,aes(x = case , y = baseline), color = "black" ) +
+  
+  #graph for hand-built model
+  geom_point(data = rmse_comp1, aes(x = case , y = hand_built), color = "blue", shape = "square") +
+  geom_line(data = rmse_comp1 ,aes(x = case , y = hand_built),  color = "darkblue" ) +
+  #geom_smooth(data = rmse_comp ,aes(x = case , y = hand_built),  color = "darkblue" ) +
+  
+  #graph for knn model
+  geom_point(data = rmse_comp1, aes(x = case , y = knn), shape = "triangle", color = "red") +
+  geom_line(data = rmse_comp1 ,aes(x = case , y = knn),  color = "red" ) +
+  #geom_smooth(data = rmse_comp ,aes(x = case , y = knn),  color = "red" )
+  scale_x_discrete("case")+
+  labs(title = "Performance across model" , x = "test case" , y = "RMSE")
+graph
+```
+
+As we observe, the RMSE for "hand-build" model (blue points) is lower than the KNN regression for most of 10 trials. The KNN regression (red points) and the baseline model (black points)'s performance are about the same. The average RMSE for these trials are:
+
+```{r table_avgRMSE_withKNN, echo=FALSE, warning=FALSE}
+kable(colMeans(rmse_comp), col.names = c("AVG RMSE"), caption = "The Average RMSE",padding = 4, align = "c")
+```
+
+
+#Question 2
+
+This report address the two issues pose by the oncology unit. First, I will investigate if some radiologists are more clinically conservative than others.
+
+I start by modelling recall decisions of each radiologists using 2 models: 
+
+- Model A: recalls based on patient's history and radiologists
+- Model B: recalls based on patient's history and radiologists including their interactions
+
+
+```{r q2_1, echo=FALSE, warning=FALSE}
+
+#read in data
+urlfile<-'https://raw.githubusercontent.com/jgscott/ECO395M/master/data/brca.csv'
+brca<-read.csv(url(urlfile))
+
+data=brca
+n = nrow(brca)
+threshold = sum(brca$recall == 1)/n+0.0001
+
+# stock deviation function to measure accuracy
+dev_out = function(model, y, dataset) {
+  probhat = predict(model, newdata=dataset, type='response')
+  p0 = 1-probhat
+  phat = data.frame(p0 = p0, p1 = probhat)
+  rc_pairs = cbind(seq_along(y), y)
+  -2*sum(log(phat[rc_pairs]))
+}
+
+
+##function to calculate error rate
+error_rate = function(matrix){
+  (matrix[2,1] + matrix[1,2]) / sum(matrix)
+}
+
+##function to calculate true positive rate
+TPR = function(matrix){
+  matrix[2,2] / sum(matrix[2,])
+}
+
+##function to calculate false positive rate
+FPR = function(matrix){
+  matrix [1,2] / sum(matrix[,2])
+}
+
+##function to calculate accuracy (1 - error rate)
+accuracy = function(error){
+  1 - error
+}
+
+# performance check
+rmse_vals = do(100)*{
+  # re-split into train and test cases
+  n_train = round(0.8*n)  # round to nearest integer
+  n_test = n - n_train
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  DF_train = data[train_cases,]
+  DF_test = data[test_cases,]
+  
+  # fit to this training set
+  glm_result1 = glm(recall~radiologist*(age+history+symptoms+menopause+density), data=DF_train, family=binomial)
+  glm_result2 = glm(recall~radiologist+age+history+symptoms+menopause+density, data=DF_train, family=binomial)
+  
+  # predict on this testing set
+  phat_test1 = predict(glm_result1, DF_test, type='response')
+  yhat_test1 = ifelse(phat_test1 > threshold, 1, 0)
+  e1 = sum(yhat_test1 != unlist(DF_test$recall))/n_test
+  
+  # predict on this testing set
+  phat_test2 = predict(glm_result2, DF_test, type='response')
+  yhat_test2 = ifelse(phat_test2 > threshold, 1, 0)
+  e2 = sum(yhat_test2 != unlist(DF_test$recall))/n_test
+  
+  c(e2,e1)
+}
+colnames(rmse_vals) <- c("model A", "model B")
+kable(colMeans(rmse_vals), col.names = c("average RMSE"), caption = "The Average RMSE",padding = 4, align = "c")
+
+```
+
+Hence, model B performs better. I will apply model B to predict the decisions of radiologists on the same sets of patients
+
+```{r recall_predictionA, echo=FALSE, warning=FALSE}
+model=glm(recall~radiologist*(age+history+symptoms+menopause+density),data=brca)
+#check to see how many different radiologists and who are they
+#factor(brca_sample$radiologist)
+
+# generate the testing set
+n = nrow(brca)
+# get the sample
+pretest_cases = sample.int(n,50,replace=FALSE)
+brca_pretest = data[pretest_cases,]
+brca_sample=data.frame(brca_pretest)
+# replicate the data for 5 times so we can assign 5 different radiologists to the same patient
+brca_samplerepeat=brca_sample[rep(1:nrow(brca_sample),each=5),-1]
+# assign the same patient to different doctors
+brca_samplerepeat$radiologist=c("radiologist13","radiologist34","radiologist66","radiologist89","radiologist95")
+# get diagnose from radiologists
+yhat_recall = predict(model, brca_samplerepeat)
+brca_samplerepeat=cbind(brca_samplerepeat,yhat_recall)
+# compare radiologists
+brca_predict<-brca_samplerepeat%>%
+  group_by(radiologist)%>%
+  summarise(Prob_recall = mean(yhat_recall))
+kable(brca_predict ,col.names = c("Radiologist" ,"Recall probability"), caption = "Comparison between radiologists using model B" , padding = 2, align = 'c')
+```
+
+To cross validate that indeed Radiologist 66 and 89 are more conservative than others, I repeat the process with model A as well.
+```{r recall_predictionB, echo=FALSE, warning=FALSE}
+model=glm(recall~radiologist+age+history+symptoms+menopause+density,data=brca)
+#check to see how many different radiologists and who are they
+#factor(brca_sample$radiologist)
+
+# generate the testing set
+n = nrow(brca)
+# get the sample
+pretest_cases = sample.int(n,50,replace=FALSE)
+brca_pretest = data[pretest_cases,]
+brca_sample=data.frame(brca_pretest)
+# replicate the data for 5 times so we can assign 5 different radiologists to the same patient
+brca_samplerepeat=brca_sample[rep(1:nrow(brca_sample),each=5),-1]
+# assign the same patient to different doctors
+brca_samplerepeat$radiologist=c("radiologist13","radiologist34","radiologist66","radiologist89","radiologist95")
+# get diagnose from radiologists
+yhat_recall = predict(model, brca_samplerepeat)
+brca_samplerepeat=cbind(brca_samplerepeat,yhat_recall)
+# compare radiologists
+brca_predict<-brca_samplerepeat%>%
+  group_by(radiologist)%>%
+  summarise(Prob_recall = mean(yhat_recall))
+kable(brca_predict ,col.names = c("Radiologist" ,"Recall probability"), caption = "Comparison between radiologists using model A" , padding = 2, align = 'c')
+```
+
+Even though the probability of recall is different, the ordering of conservatism remains the same. Hence, we can conclude that some radiologists are more conservative than others.
+
+The second question I address is: weighing some clinical risk factors more heavily than they currently are is supported by the data
+
+To validate this claim, I start with basic simple model, regressing patient's cancer outcome on the radiologist's recall decisions.
+
+Then I add in clinical risk factors to form model A. Next, I add in risk factors and recall decisions interactions terms for model B. Last, I modify the weights of risk factors by dropping out less important factors such as density for model C. To summarize, 
+
+- Baseline Model: cancer ~ recall
+- Model A: cancer ~ (.- radiologist)
+- Model B: cancer ~ recall*(.- radiologist)
+- Model C: cancer ~ recall + history + menopause
+
+The table summarize the model performance in predicting cancer
+
+```{r model_performance, echo=FALSE, warning=FALSE}
+
+Error = do(100)*{
+  data = brca
+  n = nrow(data)
+  n_train = round(0.8*n)  # round to nearest integer
+  n_test = n - n_train
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  DF_train = data[train_cases,]
+  DF_test = data[test_cases,]
+  
+  glm_model = glm(cancer~ recall, data = DF_train)
+  glm_modelA = glm(cancer~ .-radiologist, data = DF_train)
+  glm_modelB = glm(cancer ~ recall*(.- radiologist), data = DF_train)
+  glm_modelC = glm(cancer ~ recall + history + menopause, data = DF_train)
+  
+  c(
+    dev_out(model = glm_model,dataset = DF_test,y = DF_test$cancer),
+    dev_out(model = glm_modelA,dataset = DF_test,y = DF_test$cancer),
+    dev_out(model = glm_modelB,dataset = DF_test,y = DF_test$cancer),
+    dev_out(model = glm_modelC,dataset = DF_test,y = DF_test$cancer))
+  }
+colnames(Error) <- c("Baseline", "Model A", "Model B", "Model C")
+kable(colMeans(Error), col.names = c("Average Deviation for Different Models"), caption = "Average out-of-sample deviations",padding = 2, align = "c")
+```
+
+Model C outperforms the baseline model (without any clinical risk factors) and model A(including all clinical risk factors) in terms of out of sample deviation, suggesting that some clinical risk factors should be put more weight than others. Specifically, history and menopause status are two important factors that should be considered to account for probability of having cancer
+
+To further investigate the predictive power of model C, I report the accuracy, true positive rate, false positive rate and confusion matrix between model C and baseline model on the entire data set
+
+```{r detail_comparison, echo=FALSE , warning=FALSE}
+# First need to build model A which based solely on recall decision 
+glm_modelA = glm(cancer ~ recall*radiologist, data = brca)
+phatA = predict(glm_modelA, brca, type='response')
+yhatA = ifelse(phatA >= threshold, 1, 0)
+#calculate confusion matrix
+t1 = xtabs(~brca$cancer+yhatA) 
+
+# Then model B which takes into account of patient's family history and other background as well
+glm_modelB = glm(cancer ~ recall + history + menopause, data = brca)
+phatB = predict(glm_modelB, brca, type='response')
+yhatB = ifelse(phatB >= threshold, 1, 0)
+#calculate confusion matrix
+t2 = xtabs(~brca$cancer+yhatB)
+
+#coef = summary(glm_modelB)
+#kable(as.data.frame(coef["coefficients"]), caption = "Regression Result for Model C",padding = 2, align = "c")
+
+df = as.data.frame(t1)
+t1 = data.frame(yhat0 = c(df$Freq[1],df$Freq[2]),yhat1 = c(df$Freq[3],df$Freq[4]))
+row.names(t1) <- c("cancer = 0", "cancer = 1")
+kable(t1, caption = "Confusion matrix of baseline model",padding = 2, align = "c", col.names = c("prediction = 0", "prediction = 1"))
+
+df = as.data.frame(t2)
+t2 = data.frame(yhat0 = c(df$Freq[1],df$Freq[2]),yhat1 = c(df$Freq[3],df$Freq[4]))
+row.names(t2) <- c("cancer = 0", "cancer = 1")
+kable(t2, caption = "Confusion matrix of model C",padding = 2, align = "c", col.names = c("prediction = 0", "prediction = 1"))
+
+TPR_baseline = TPR(t1)
+TPR_C = TPR(t2)
+FPR_baseline = FPR(t1)
+FPR_C = FPR(t2)
+accuracy_baseline = 1 - error_rate(t1)
+accuracy_C = 1 - error_rate(t2)
+
+```
+
+Hence, the baseline model measure of performance are:
+
+- Accuracy rate: `r accuracy_baseline`
+- False positive rate: `r FPR_baseline`
+- True positive rate: `r TPR_baseline`
+
+Compare to those of model C:
+
+- Accuracy rate: `r accuracy_C`
+- False positive rate: `r FPR_C`
+- True positive rate: `r TPR_C`
+
+As false postive rate decreases and accuracy rate increases, suggesting model C with consideration of patient's history and menopause status will identify more precisely the cancer's outcome. 
+We then can conclude that some clinical risk factors are more important than others suggesting by the data.
+
+
+
+#Question 3
+
+2 models I consider for the first problem (regress first, threshold second):
+
+- Model 1: without publication timings in the weekend, max/min polarity and global rate 
+      
+      shares ~ (. - is_weekend - weekday_is_sunday - min_positive_polarity -
+                       max_positive_polarity - min_negative_polarity - max_negative_polarity -
+                       global_rate_positive_words - global_rate_negative_words - abs_title_sentiment_polarity )
+      
+- Model 2: emphasized on word counts and keywords
+      $shares ~ title + title^2 + content + content^2 + keyword + keywords^2 + 
+                   content*keywords$
+                   
+2 models I consider for the second problem (threshold first, classification second):
+
+- Model 3: similar to model 1, but takes indicator viral as y-value
+
+    viral ~ (.  -share - is_weekend - weekday_is_sunday - min_positive_polarity -
+                     max_positive_polarity - min_negative_polarity - max_negative_polarity -
+                     global_rate_positive_words - global_rate_negative_words - abs_title_sentiment_polarity )
+
+- Model 4: binomial logistic regression for classification of model 3 (including a logit link)
+
+Following the suggestion of Dr. Scott in measuring the performance of models predicting virality of articles, the average confusion matrix, overall error rate, true positive rate and false positive rate for my best model are reported below.
+
+```{r q3_2, echo=FALSE, warning=FALSE}
+data_file<-'https://raw.githubusercontent.com/RoDivinity/DataMining/master/Data/online_news.csv'
+data<-read.csv(url(data_file))
+
+##drop the unused variable
+data<- data[-c(1) ]
+
+## define threshold for share -> viral
+data$viral = ifelse(data$shares > 1400, 1, 0)
+
+n = nrow(data)
+
+######
+##Define functions to measure accuracy
+#######
+
+#function to return the confusion matrix for threshold 1st/classification 2nd
+classification_confusion_matrix <- function(lm_model , data){
+  ###Predictions in sample
+  yhat_test = predict(lm_model, data)
+  class_test = ifelse(yhat_test > 0.5, 1, 0)
+  ###Create the matrix
+  matrix = table(y = data$viral, yhat = class_test)
+  return(matrix)
+}
+
+#function to return the confusion matrix for classification 1st/ threshold 2nd
+threshold_confusion_matrix <- function(lm_model , data){
+  ###Predictions in sample
+  yhat_test = predict(lm_model, data)
+  class_test = ifelse(yhat_test > 1400, 1, 0)
+  ###Create the matrix
+  matrix = table(y = data$viral, yhat = class_test)
+  return(matrix)
+}
+
+##function to calculate error rate
+error_rate = function(matrix){
+  (matrix[2,1] + matrix[1,2]) / sum(matrix)
+}
+
+##function to calculate true positive rate
+TPR = function(matrix){
+  matrix[2,2] / sum(matrix[2,])
+}
+
+##function to calculate false positive rate
+FPR = function(matrix){
+  matrix [1,2] / sum(matrix[,2])
+}
+
+##function to calculate accuracy (1 - error rate)
+accuracy = function(error){
+  1 - error
+}
+##function to rearrange values into matrix
+toMatrix = function(a){
+  matrix <- a[c(1:4)]
+  dim(matrix) <- c(2,2)
+  return(matrix)
+}
+
+##################  Main routine  #####################
+
+
+###
+# Loop 100 times to average out the effect of randomness
+# Each iteration do the following:
+#   * Split train/test set
+#   * Regression first / threshold second for:
+#       * A simple linear probability model: with/without poly terms and/or interaction
+#       * Logistic regression model (Logit)
+#     => Measure performance for 2 models, store value for averaging  (1)
+#   * Threshold first / regress/classification second for:
+#       * A simple linear probability model: with/without poly terms and/or interaction
+#       * Logistic regression model (Logit)
+#     => Measure performance for 2 models, store value for averaging (2)
+# Done 100 loops:
+#   Report which is the best model + overall (error rate, true positive, false positive, confusion matrix)
+#   Compare between case (1) and (2)
+##
+
+
+performance = do(100)*{
+
+  ## Split into training and testing sets
+  n_train = round(0.8*n)  
+  n_test = n - n_train
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  data_train = data[train_cases,]
+  data_test = data[test_cases,]
+
+## regress first, threshold second for LPM without max/min polarity and global rate (case 1)
+lpm1 = lm(shares ~ (.  - viral - is_weekend - weekday_is_sunday - min_positive_polarity -
+                       max_positive_polarity - min_negative_polarity - max_negative_polarity -
+                       global_rate_positive_words - global_rate_negative_words - abs_title_sentiment_polarity ), data=data_train)
+
+## model emphasized on word counts and keywords
+lpm_advance = lm(shares ~ poly(n_tokens_title,2) + poly(n_tokens_content, 2) + poly(num_keywords , 2) + 
+                   n_tokens_content*num_keywords, data=data_train)
+
+############################
+##### Now for (2) case #####
+############################
+
+### threshold first, regress second for LPM  (case 2)
+lpm2 = lm(viral ~ (.  - viral - is_weekend - weekday_is_sunday - min_positive_polarity -
+                     max_positive_polarity - min_negative_polarity - max_negative_polarity -
+                     global_rate_positive_words - global_rate_negative_words - abs_title_sentiment_polarity ), data=data_train)
+
+### simple binomial logistic regression for classification (case 2)
+glm1 = glm(viral ~ (.  - shares - is_weekend - weekday_is_sunday - min_positive_polarity -
+                      max_positive_polarity - min_negative_polarity - max_negative_polarity -
+                      global_rate_positive_words - global_rate_negative_words - abs_title_sentiment_polarity ), data=data_train, family=binomial)
+
+
+###
+# Now measure performance for each case
+#     * First create confusion matrix for each model
+#     * Obtain confusion matrix for each one
+#     * Push all values into the performance array
+###
+
+#out of sample confusion matrix for model 1
+matrix1 = threshold_confusion_matrix(lpm1 , data_test)
+#out of sample confusion matrix for model 2
+matrix2 = threshold_confusion_matrix(lpm_advance , data_test)
+#out of sample confusion matrix for model 3
+matrix3 = classification_confusion_matrix(lpm2 , data_test)
+#out of sample confusion matrix for model 4
+matrix4 = classification_confusion_matrix(glm1 , data_test)
+
+#pushing values in
+c( matrix1, matrix2, matrix3, matrix4)
+}
+#get the mean for 100 iterations
+means = colMeans(performance)
+
+#recreate average out of sample confusion matrix
+avg_matrix1 = toMatrix(means[c(1:4)])
+avg_matrix2 = toMatrix(means[c(5:8)])
+avg_matrix3 = toMatrix(means[c(9:12)])
+avg_matrix4 = toMatrix(means[c(13:16)])
+
+#calculate accuracy based on error rate, false positive rate, true positive rate for each model
+#error rate
+error1 = error_rate(avg_matrix1)
+error2 = error_rate(avg_matrix2)
+error3 = error_rate(avg_matrix3)
+error4 = error_rate(avg_matrix4)
+error = c(error1, error2 ,error3, error4)
+#error
+#false positive rate
+FPR1 = FPR(avg_matrix1)
+FPR2 = FPR(avg_matrix2)
+FPR3 = FPR(avg_matrix3)
+FPR4 = FPR(avg_matrix4)
+FPR = c(FPR1, FPR2, FPR3, FPR4)
+#FPR
+#true positive rate
+TPR1 = TPR(avg_matrix1)
+TPR2 = TPR(avg_matrix2)
+TPR3 = TPR(avg_matrix3)
+TPR4 = TPR(avg_matrix4)
+TPR = c(TPR1, TPR2, TPR3, TPR4)
+#TPR
+```
+
+#Average confusion matrix for the 4 models:
+
+```{r confusion_matrix, echo=FALSE, warning=FALSE}
+#model 1
+row.names(avg_matrix1) = c("viral = 0" , "viral = 1")
+kable(avg_matrix1, col.names = c("prediction = 0", "prediction = 1"), caption = "Confusion matrix for baseline model (model 1)")
+
+#model 2
+row.names(avg_matrix2) = c("viral = 0" , "viral = 1")
+kable(avg_matrix2, col.names = c("prediction = 0", "prediction = 1"), caption = "Confusion matrix for improved model (model 2)")
+
+#model 3
+row.names(avg_matrix3) = c("viral = 0" , "viral = 1")
+kable(avg_matrix3, col.names = c("prediction = 0", "prediction = 1"),caption = "Confusion matrix for classification model (model 3)")
+
+#model 4
+row.names(avg_matrix4) = c("viral = 0" , "viral = 1")
+kable(avg_matrix4, col.names = c("prediction = 0", "prediction = 1"),caption = "Confusion matrix for logit model (model 4)")
+```
+
+#Overall performance:
+
+```{r error_table, echo=FALSE, warning=FALSE}
+performance_table = rbind(error , FPR, TPR)
+colnames(performance_table) = c("Model 1", "Model 2", "Model 3", "Model 4")
+rownames(performance_table) = c("Error rate", "False positive rate", "True positive rate")
+kable(performance_table, caption = "Average performance of different models", align = 'c')
+```
+
+So my hand build model (model 2) perform better than the baseline model (model 1) to a small extent in the regress first, threshold second approach (using threshold: >1400 shares is "viral").
+
+Model 3 and model 4 has a much better accuracy in prediction. Hence, threshold first, classification second approach performs better. 
+
+The reason behind this is because if we regress first, we are predicting an outcome with natural orderings. So a predicted value of 1399 is as close to 1400 as 1401 to 1400 in Euclidean normed space. However, when we threshold these predicted value, we impose a binary class (whether $\hat{y} \geqslant 1400$) that suggesting 1401 and 1399 means totally different things even though their outcomes in regression are close. So the decision whether an article is viral or not for predicted value in close proximity to threshold level 1400 shares is problematic.
+
+When we threshold first, the outcome is categorized as one-hot vector. The ordering of outcome break downs as now values are classes and class does not exhibit relative proximity. It implies there is no natural orderings of the outcome. Hence threshold first reduces the problem of predicted values clustering around the threshold level causing prediction decisions to be wrong in some cases.
