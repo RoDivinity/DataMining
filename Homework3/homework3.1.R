@@ -19,7 +19,7 @@ data$payment <- ifelse(data$net == 0 , "gross contract" , "net contract")
 #seperate the data based on green building type
 data$green_type <- ifelse (data$green_rating == 0, 'Non-green' , 'Green')
 
-scx = sparse.model.matrix(Rent ~ ., data=data)[,-1] # do -1 to drop intercept!
+scx = sparse.model.matrix(Rent ~ .*data$green_type, data=data)[,-1] # do -1 to drop intercept!
 # here, we could have also just done x = as.matrix(semiconductor[,-1]).
 # but sparse.model.matrix is a good way of doing things if you have factors.
 
