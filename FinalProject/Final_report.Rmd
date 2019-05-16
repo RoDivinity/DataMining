@@ -18,10 +18,10 @@ library(gamlr)
 library(knitr)
 
 #import data set
-college2010_impute <- read.csv("~/college2010_impute.csv", header=TRUE)
-college2012_impute <- read.csv("~/college2012_impute.csv", header=TRUE)
-college2013_impute <- read.csv("~/college2013_impute.csv", header=TRUE)
-college2014_impute <- read.csv("~/college2014_impute.csv", header=TRUE)
+college2010_impute <- read.csv(url("https://raw.githubusercontent.com/RoDivinity/DataMining/master/FinalProject/Data/college2010_impute.csv"), header=TRUE)
+college2012_impute <- read.csv(url("https://raw.githubusercontent.com/RoDivinity/DataMining/master/FinalProject/Data/college2012_impute.csv"), header=TRUE)
+college2013_impute <- read.csv(url("https://raw.githubusercontent.com/RoDivinity/DataMining/master/FinalProject/Data/college2013_impute.csv"), header=TRUE)
+college2014_impute <- read.csv(url("https://raw.githubusercontent.com/RoDivinity/DataMining/master/FinalProject/Data/college2014_impute.csv"), header=TRUE)
 
 
 #make all data numeric
@@ -270,10 +270,10 @@ LASSOmodel
 ```
 
 With reference to the data dictionary supplied by U.S Department of Education, the following features related to return on attending colleges:
-  a. Percentage of degrees awarded in different fields (PCIP12 and PCIP46 represent Personal and Culinary Services)
-  b. Completion of colleges (root COMP stands for completion, with suffix XYR_TRANS_YR2_RT refer to percentage of students transferred to X-year institution and completed them within Y year)
-  c. Transfer movement of students (suffix TRANS_YRX refer to transfer to X year institutions, while prefex LO_INC, DEP_ENRL, FIRSTGEN, PELL indicates low income, dependent, first generation, TitleIV and Pell Grant received students attending colleges)
-  d. Percentage of students earning over $25000/year 6 years after entered college 
+  1. Percentage of degrees awarded in different fields (PCIP12 and PCIP46 represent Personal and Culinary Services)
+  2. Completion of colleges (root COMP stands for completion, with suffix XYR_TRANS_YR2_RT refer to percentage of students transferred to X-year institution and completed them within Y year)
+  3. Transfer movement of students (suffix TRANS_YRX refer to transfer to X year institutions, while prefex LO_INC, DEP_ENRL, FIRSTGEN, PELL indicates low income, dependent, first generation, TitleIV and Pell Grant received students attending colleges)
+  4. Percentage of students earning over $25000/year 6 years after entered college 
 
 Test for uncertainty of the model using 2010 data, compared to the benchmark model
 
@@ -331,3 +331,220 @@ In my projects, I have not addressed the existence of endogeneity. It may introd
 2. Card, D. & Krueger, A. B. (1996): Labor market effects of school quality: Theory and Evidence. NEBR Working Paper, 5450.
 
 3. Rubin, D. A. & Little, R. J. A. (2002): Statistical analysis with missing data (2nd edition). Wiley Series in Probabilities and Statistics. DOI:10.1002/9781119013563
+
+##Appendix
+Attach in the .Rmd are my R code to preprocess the data. Since the original data set is large, and computation for imputing the data set is slow, Rmarkdown compiling time and power do not allow me to add them to the script. Therefore I embed the code in .Rmd file. If you are interested, or want to verify the integrity of my work on imputation, here the code to reproduce original CSV file (>200 Mb) to my imputed CSV file
+
+```{r preprocess, eval=FALSE, include=FALSE}
+#########loading library
+library(missRanger)
+library(dummies)
+library(gamlr)
+library(tidyverse)
+
+#########import data set
+college2010 <- read.csv("~/Desktop/Data Mining Final Project/CollegeScorecard_Raw_Data/MERGED2009_10_PP.csv", row.names=1)
+
+#######Specify missing values
+college2010[college2010 == "NULL"] = NA
+college2010[college2010 == "PrivacySuppressed"] = NA
+count = sum(is.na(college2010))
+missing = count / nrow(college2010) /ncol(college2010)
+missing
+
+ROW = nrow(college2010)
+COL = ncol(college2010)
+
+#######filter out column with more than 85% missing values (unavailable data) 
+percent_missing_col = 0.85
+threshold_column = round(percent_missing_col*ROW , 0)
+col_count <- colSums(is.na(college2010))
+col_to_delete <- c()
+for (i in 1:COL)
+{
+  if (col_count[i] > threshold_column)
+  {col_to_delete <- c(col_to_delete , i)}
+}
+
+
+college2010 <- college2010[-col_to_delete]
+dim(college2010)
+
+
+########filter out row with more than x% missing values (small colleges or unavailable statistics)
+#######select colleges with 90% available information
+########percent_missing_row = 0.10
+
+###########calculate threshold for filtering
+threshold_row = round(percent_missing_row*COL, 0)
+
+##########count missing values for each row
+row_count<- rowSums(is.na(college2010))
+
+#########find all row with 10% NA values and remove
+row_to_delete <- c()
+ROW = nrow(college2010)
+for (i in 1:ROW)
+{
+  if (row_count[i] > threshold_row)
+  {row_to_delete <- c(row_to_delete , i)}
+}
+
+college2010 <- college2010[-row_to_delete,]
+dim(college2010)
+
+##########Filter out again unusable variables
+COL = ncol(college2010)
+percent_missing_col = 0.10
+threshold_column = round(percent_missing_col*ROW , 0)
+col_count <- colSums(is.na(college2010))
+col_to_delete <- c()
+for (i in 1:COL)
+{
+  if (col_count[i] > threshold_column)
+  {col_to_delete <- c(col_to_delete , i)}
+}
+
+length(col_to_delete)
+
+
+college2010 <- college2010[-col_to_delete]
+dim(college2010)
+
+########take out values that indegnous to colleges (subsetting away geographical information) so imputation be easier and ########faster
+
+school_identifiers <- c("UNITID" , "OPEID" , "OPEID6", "INSTNM" , "CITY" , "STABBR" , "ZIP", "ACCREDAGENCY" , "INSTURL" , "NPCURL" , "ALIAS")
+college2010_data <- college2010[, -which(names(college2010) %in% school_identifiers)]
+count = sum(is.na(college2010_data))
+missing = count / nrow(college2010_data) /ncol(college2010_data)
+missing
+
+############Factor out regions/states to dummy and drop region columns
+df_state <-dummy(college2010_data$ST_FIPS,sep = ".")
+college2010_data <- cbind(college2010_data, df_state)
+df_region <-dummy(college2010_data$REGION,sep = ".")
+college2010_data <- cbind(college2010_data, df_region)
+
+#########Drop region and state id as we have dummy variables represent them
+drop_col <- c("REGION", "ST_FIPS")
+college2010_data <- college2010_data[, -which(names(college2010_data) %in% drop_col)]
+
+###########All variables > 10 factors are indeed continuous, but R reads as factor due to character values
+
+college2010_data[college2010_data == "NULL"] = NA
+college2010_data[college2010_data == "PrivacySuppressed"] = NA
+COL = ncol(college2010_data)
+for (i in 1:COL)
+{
+  if(nlevels(factor(college2010_data[,i])) >= 5)
+  {college2010_data[,i] <- as.numeric(as.character(college2010_data[,i]))}
+  else 
+  {college2010_data[,i] <- as.factor(college2010_data[,i])}
+}
+
+
+#########Inpute missing data for calculation
+##########method for imputation: fast imputation by miss forest, not using predictive mean 
+college2010_impute <- missRanger(college2010_data, maxiter = 5L, pmm.k = 0L, seed = NULL,
+                                   verbose = 1, returnOOB = FALSE)
+                                   
+                                   
+########Calculate return on attending college and change data type to numeric
+RETURN <- (college2010_impute$MN_EARN_WNE_P6 - college2010_impute$COSTT4_A) / college2010_impute$COSTT4_A
+college2010_impute <- cbind(RETURN,college2010_impute)
+for (i in 1:ncol(college2010_impute))
+{
+  college2010_data[,i] <- as.numeric(as.character(college2010_data[,i]))
+}
+                                   
+#########Export out imputed data
+write.csv(college2010_impute, file = "college2010_impute.csv")
+
+#############End of R code##############
+```
+
+I repeat this process for other data sets as well, by changing 2010 to xxxx corresponding to the year of the data set and retains only selected variables by LASSO regression. However, first I must check if statistics on variables COSTT_4A and MN_EARN_WNE_P6 are available or reported in the data set before proceed. The imputation process is really exhausting. Below are R code for year 2014 data 
+
+```{r year_impute, eval=FALSE, include=FALSE}
+############ 2014 ############
+year = 2014
+college2014 <- read.csv("~/Desktop/Data Mining Final Project/CollegeScorecard_Raw_Data/MERGED2013_14_PP.csv", row.names=1)
+#check if earning is available
+count_na <- sum(is.na(college2014["MN_EARN_WNE_P6"]))
+count_na
+count_na <- sum(is.na(college2014["COSTT4_A"]))
+count_na
+#Specify missing values
+college2014[college2014 == "NULL"] = NA
+college2014[college2014 == "PrivacySuppressed"] = NA
+
+### keep only interested variables ####
+return_var <-c("MN_EARN_WNE_P6" , "COSTT4_A")
+e_var <- c("AVGFACSAL", "SAT_AVG" , "RET_FT4")
+#featured vars obtained from LASSO regression from data set 2010
+
+interested_vars <- c(e_var, featured_var, return_var)
+college2014_data <- college2014[interested_vars]
+
+
+#filter out row with more than x% missing values (small colleges or unavailable statistics)
+#select colleges with 90% available information
+percent_missing_row = 0.30
+COL = ncol(college2014_data)
+#calculate threshold for filtering
+threshold_row = round(percent_missing_row*COL, 0)
+
+#count missing values for each row
+row_count<- rowSums(is.na(college2014_data))
+
+#find all row with 10% NA values and remove
+row_to_delete <- c()
+ROW = nrow(college2014_data)
+for (i in 1:ROW)
+{
+  if (row_count[i] > threshold_row)
+  {row_to_delete <- c(row_to_delete , i)}
+}
+length(row_to_delete)
+
+college2014_data <- college2014_data[-row_to_delete,]
+dim(college2014_data)
+
+#fix problem of wrongly typed data reading in
+for (i in 1:COL)
+{
+  if(nlevels(factor(college2014_data[,i])) >= 5)
+  {college2014_data[,i] <- as.numeric(as.character(college2014_data[,i]))}
+  else 
+  {college2014_data[,i] <- as.factor(college2014_data[,i])}
+}
+
+#impute missing values
+college2014_impute <- missRanger(college2014_data, maxiter = 5L, pmm.k = 0L, seed = NULL,
+                                 verbose = 1, returnOOB = FALSE)
+#redefine variables as numeric for regressions
+for (i in 1:ncol(college2014_impute))
+{
+  {college2014_impute[,i] <- as.numeric(as.character(college2014_impute[,i]))}
+}
+
+#drop all variables that still contains missing values as this is unusable for LASSO
+
+ROW = nrow(college2014_impute)
+percent_missing_col = 1
+threshold_column = round(percent_missing_col*ROW , 0)
+col_count <- colSums(is.na(college2014_impute))
+col_to_delete <- c()
+for (i in 1:COL)
+{
+  if (col_count[i] >= threshold_column)
+  {col_to_delete <- c(col_to_delete , i)}
+}
+college2014_impute <- college2014_impute[-col_to_delete]
+college2014_impute$RETURN <- (college2014_impute$MN_EARN_WNE_P6 - college2014_impute$COSTT4_A) / college2014_impute$COSTT4_A
+write.csv(college2014_impute, file ="college2014_impute.csv")
+```
+
+But finally I finished this project and graduated from Master. I really enjoy your class and learn so much from you and your materials. I still think your homework sets are the best, especially the ones in statistics class in the summer.
+
+                                   
