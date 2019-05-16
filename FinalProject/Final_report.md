@@ -19,7 +19,7 @@ College Scorecard published by U.S Department of Education contains college stat
 Methodology
 -----------
 
-1.  Preprocessing data: Even though the data set contains nearly 1900 variables from five major categories collected from 7149 colleges, some of them have missing values due to unavailability of information, privacy policies and change in definitions over time. I will filter out these variables if they have over 85% of values which are missing. Next, I will filter out colleges with more than 10% of variables with missing values (these colleges can be too small, undergo fiscal problems or choose not to disclose vital information). The filter is necessary to make the data less noisy and counterproductive. Remaining categorical variables will be splitted into new columns explained by expository data dictionary maintained by U.S. Department of Education. Since not all variables are reported for 1051 colleges, I need to impute the data set following Don Rubin (Statistical Inference of Missing Values, 2002) methods. Data are missing at random because for some colleges, the variables are reported, but not for others. The missing values after filtering out unreported variables and colleges are only 6.74% of the data but the process of imputation will be long due to robustness in imputation method. I do not utilize mean, mode or median to replace missing values because it reduces variance in data set and distorts the distributions of the variables. Other simple methods like using linear regressions to predict missing values are quick but they introduce bias and incapable of handling categorical variables (Rubin, 2002). In this project, I will utilize miss ranger method, an improvement of random forest algorithm in predicting missing values. It is reasonable efficient in computing time and handling both discrete and continuous variables. Due to file constraints, I must comment out my data preprocessing codes and export all imputed data as inputs for Rmarkdown to knit.
+1.  Preprocessing data: Even though the data set contains nearly 1900 variables from five major categories collected from 7149 colleges, some of them have missing values due to unavailability of information, privacy policies and change in definitions over time. I will filter out these variables if they have over 85% of values which are missing. Next, I will filter out colleges with more than 10% of variables with missing values (these colleges can be too small, undergo fiscal problems or choose not to disclose vital information). The filter is necessary to make the data less noisy and counterproductive. Remaining categorical variables will be splitted into new columns explained by expository data dictionary maintained by U.S. Department of Education. Since not all variables are reported for 1051 colleges, I need to impute the data set following Don Rubin and Roderick Little suggested methods (Rubin and Little, 2002). Data are missing at random because for some colleges, the variables are reported, but not for others. The missing values after filtering out unreported variables and colleges are only 6.74% of the data but the process of imputation will be long due to robustness in imputation method. I do not utilize mean, mode or median to replace missing values because it reduces variance in data set and distorts the distributions of the variables. Other simple methods like using linear regressions to predict missing values are quick but they introduce bias and incapable of handling categorical variables (Rubin, 2002). In this project, I will utilize miss ranger method, an improvement of random forest algorithm in predicting missing values. It is reasonable efficient in computing time and handling both discrete and continuous variables. Due to file constraints, I must comment out my data preprocessing codes and export all imputed data as inputs for Rmarkdown to knit.
 
 2.  Regularize data: To analyze the data, I will generate an independent variable, named RETURN. The variable is computed by using the average income earned by former students minus the cost of attendance divided by the cost of attendance reported in the data. The variable carries the similar measure of return on education primarily used in labor economics literature. It also an indicator to address the question concerned students and parents, which school is the best bang for the buck. I will use the mean earnings of students working and not enrolled 6 years after entry (MN\_EARN\_WNE\_P6) as reference for potential earnings and average anual total cost of attendance (COSTT4\_A) as reference for cost of attendance. To make the data intepretable, I will deploy Lasso regression to eliminate unnecessary variables in the data from the filtered variables after data preprocessing. The first step is to create a sparse matrix to handle multiple categorical variables (geographical locations, cohort gender, race, Title IV status, etc). After building design matrix, I run Lasso regression from gamlr library and extract out variables in the Lasso regression impacting the return on education. Then I rerun obtained features as targeted regression model explaining the return on education. For data from year 2012 to 2014, I use selected features from LASSO regressions to subset the data and impute missing values again, then predict the outcomes for the simple linear regression model obtained above.
 
@@ -53,7 +53,9 @@ Test for uncertainty of the model using 2010 data, compared to the benchmark mod
 
 | year | sug\_model\_RMSE | sel\_model\_RMSE |
 |:----:|:----------------:|:----------------:|
-| 2010 |     0.7427245    |     0.6238888    |
+| 2010 |     0.7435929    |     0.6235152    |
+
+The K-fold cross validation's RMSE of featured regression is smaller compated to that of suggested model in economic literature. This result strengthens the support of adding these features to final model.
 
 Stability across time
 
@@ -64,11 +66,13 @@ Stability across time
 | 2013 |    0.5593955   |     0.4138776    |
 | 2014 |    0.6025150   |     0.4718497    |
 
-The results of linear model from selected variables outperform suggested model adapt from labor economics literature, these features should be included to measures of school quality. Students and parents, and general public should consider these factors too when comparing schools and considering attending colleges
+The results of linear model from selected variables outperform suggested model adapt from labor economics literature, these features should be included to measures of school quality. Students and parents, and general public should consider these factors too when comparing schools and considering attending colleges.
+
+However, the regression model on selected features are less stable compared to suggested model from labor economics literature
 
 The coefficients estimates of two linear models:
 
-1.  Black and Smith's suggested model
+-   Black and Smith's suggested model
 
 |             | coefficients.Estimate | coefficients.Std..Error | coefficients.t.value | coefficients.Pr...t.. |
 |-------------|:----------------------|:------------------------|:---------------------|:----------------------|
@@ -77,7 +81,7 @@ The coefficients estimates of two linear models:
 | RET\_FT4    | 0.0223989             | 0.1819445               | 0.1231087            | 0.9020447             |
 | SAT\_AVG    | -0.0017185            | 0.0003630               | -4.7336921           | 0.0000025             |
 
-1.  Model from selected features
+-   Model from selected features
 
 |                                     | coefficients.Estimate | coefficients.Std..Error | coefficients.t.value | coefficients.Pr...t.. |
 |-------------------------------------|:----------------------|:------------------------|:---------------------|:----------------------|
@@ -108,3 +112,12 @@ Conclusions
 ===========
 
 The selected features from data mining concludes that SAT score (measures of colleges’ selectivity), the freshman retainment rate (measures of students’ preferences with the colleges) and average faculty salary (measures of colleges’ inputs into education) are deciding factors in determining college qualities. The return on education increases with the percentage of students who received Pell Grant then transfer to 4-year colleges. Interestingly, the contrary is true, too. Students who receives aids but transfer out of the institutions after 8 years implying an adverse outcome on return on colleges. This can be explained by students' preference of colleges. College students with financial struggle will either make the best use of Title IV loans to transfer to better universities or rely on the loan and do not complete degree or dropout. Loan status, transfer movement and withdrawals of student body (transfer out to 2-year or 4-year institutions) tends to significantly explain and predict the return of attending a college. Other factors such as majors, degree types, racial, gender and age distribution of the cohort, and control of an institution(public or private) does not impact the financial return as many students and parents worried. These are accomplishments deserved to be lauded: student loans are effective, but only if the students utilize them. Gender, races, and age are equal in financial returns of attending colleges (The estimates from LASSO regression are 0 and filtered out by regularization process, implying no impact on the outcomes based on 2010 data). In my projects, I have not addressed the existence of endogeneity. It may introduce bias to the estimates. However, this is not my primary objective. In this project, my aim is to select a set of meaningful features to help users focus on using the colleges' statistics, a publicly available dataset but often neglected by general public. The features selected will make the data readable to interested audience, indicating users of the more relevant characteristics out of more than 1800 noisy variables. It also provides simple, intuitive understanding of these variables, with positive, negative magnitude represents whether the variables are good or bad in picking colleges. College students and parents can easily predict the average expected financial returns of attending amongst colleges by using the estimates of the variables.
+
+Reference
+=========
+
+1.  Black, D. A. & Smith, J. A. (2004): How robust is the effects of college quality? Evidence from matching. Journal of Econometrics, vol. 121, 99-124
+
+2.  Card, D. & Krueger, A. B. (1996): Labor market effects of school quality: Theory and Evidence. NEBR Working Paper, 5450.
+
+3.  Rubin, D. A. & Little, R. J. A. (2002): Statistical analysis with missing data (2nd edition). Wiley Series in Probabilities and Statistics. <DOI:10.1002/9781119013563>
