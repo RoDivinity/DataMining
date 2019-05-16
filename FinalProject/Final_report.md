@@ -53,7 +53,7 @@ Test for uncertainty of the model using 2010 data, compared to the benchmark mod
 
 | year | sug\_model\_RMSE | sel\_model\_RMSE |
 |:----:|:----------------:|:----------------:|
-| 2010 |     0.7431249    |     0.6218201    |
+| 2010 |     0.7428267    |     0.6241476    |
 
 The K-fold cross validation's RMSE of featured regression is smaller compated to that of suggested model in economic literature. This result strengthens the support of adding these features to final model.
 
@@ -127,6 +127,6 @@ Appendix
 
 Attach in the .Rmd are my R code to preprocess the data. Since the original data set is large, and computation for imputing the data set is slow, Rmarkdown compiling time and power do not allow me to add them to the script. Therefore I embed the code in .Rmd file. If you are interested, or want to verify the integrity of my work on imputation, here the code to reproduce original CSV file (&gt;200 Mb) to my imputed CSV file
 
-I repeat this process for other data sets as well, by changing 2010 to xxxx corresponding to the year of the data set. The imputation process is really exhausting.
+I repeat this process for other data sets as well, by changing 2010 to xxxx corresponding to the year of the data set and retains only selected variables by LASSO regression. However, first I must check if statistics on variables COSTT\_4A and MN\_EARN\_WNE\_P6 are available or reported in the data set before proceed. The imputation process is really exhausting. Below are R code for year 2014 data
 
 But finally I finished this project and graduated from Master. I really enjoy your class and learn so much from you and your materials. I still think your homework sets are the best, especially the ones in statistics class in the summer.
