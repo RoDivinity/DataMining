@@ -1,0 +1,313 @@
+---
+title: "Final Project Report"
+author: "Linh Nguyen"
+date: "5/16/2019"
+output: 
+  md_document:
+    variant:  markdown_github
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r main, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+#loading library
+library(gamlr)
+library(knitr)
+
+#import data set
+college2010_impute <- read.csv("~/college2010_impute.csv", header=TRUE)
+college2012_impute <- read.csv("~/college2012_impute.csv", header=TRUE)
+college2013_impute <- read.csv("~/college2013_impute.csv", header=TRUE)
+college2014_impute <- read.csv("~/college2014_impute.csv", header=TRUE)
+
+
+#make all data numeric
+for (i in 1:ncol(college2010_impute))
+{
+  college2010_impute[,i] <- as.numeric(as.character(college2010_impute[,i]))
+}
+
+#drop NA columns
+COL = ncol(college2010_impute)
+ROW = nrow(college2010_impute)
+percent_missing_col = 1
+threshold_column = round(percent_missing_col*ROW , 0)
+col_count <- colSums(is.na(college2010_impute))
+col_to_delete <- c()
+for (i in 1:COL)
+{
+  if (col_count[i] >= threshold_column)
+  {col_to_delete <- c(col_to_delete , i)}
+}
+
+college2010_impute <- college2010_impute[-col_to_delete]
+#Calculate return on education
+return_var <-c("MN_EARN_WNE_P6" , "COSTT4_A")
+
+
+#Starting LASSO regession      
+# for gamlr, and most other functions, you need to create your own numeric
+# design matrix.  We'll do this as a sparse `simple triplet matrix' using 
+# the sparse.model.matrix function.
+collegex = model.matrix( RETURN ~ . , data=college2010_impute)[,-1] # do -1 to drop intercept!
+# here, we could have also just done x = as.matrix(semiconductor[,-1]).
+# but sparse.model.matrix is a good way of doing things if you have factors.
+
+collegey = college2010_impute$RETURN # pull out `y' too just for convenience
+
+sclasso = gamlr(collegex, collegey, family="gaussian")
+
+# the coefficients at the AIC-optimizing value
+cbeta = coef(sclasso) 
+
+
+
+#threshold of magnitude of betas to pick: not too small, then magnitude do not impact regression much
+coef_threshold = 0
+
+val <- c()
+val = seq(0, 1.5 , by = 0.1)
+table_1 = c()
+for (i in val)
+{
+  coef_threshold = i
+  row <- cbind( i , sum(abs(cbeta) > coef_threshold) - 1)
+  table_1 <- rbind(table_1,row)
+}
+table_1 = t(table_1)
+
+#extract out coefficients that matter
+coef_threshold = 0.5
+p1 <- dimnames(cbeta)[[1]]
+p2 <- c()
+featured_var <- c()
+for (i in c(1:length(cbeta))){
+  p2 <- c(p2, as.list(cbeta)[[i]])
+}
+
+for (i in 1:length(cbeta)) {
+  if (abs(p2[i]) > coef_threshold && 
+      (any(names(college2010_impute) == p1[i])) && any(names(college2012_impute) == p1[i]))
+    featured_var <- c(featured_var , p1[i])
+}
+#obtain the regression
+regressors <- c(featured_var[1])
+for(i in 2 : length(featured_var) )
+{
+  regressors <- paste(regressors, " + ", featured_var[i])
+}
+
+e_var <- c("AVGFACSAL", "SAT_AVG" , "RET_FT4")
+for (i in 1:length(e_var))
+{
+  regressors <- paste(regressors, " + ", e_var[i]) 
+}
+
+LASSOmodel <- as.formula(paste("RETURN ~ ",regressors))
+LASSOmodel
+
+
+
+#simple econometric model:
+#RETURN ~ AVGFACSAL + PFTFAC + INEXPFTE + RET_FT4 + RET_FTL4 + RET_PT4 + RET_PTL4 + SAT_AVG
+
+reg_model <- as.formula(c("RETURN ~ AVGFACSAL + RET_FT4 + SAT_AVG"))
+
+#benchmark test
+#within year
+N = nrow(college2010_impute)
+# Create a vector of fold indicators
+K = 10
+fold_id = rep_len(1:K, N)  # repeats 1:K over and over again
+fold_id = sample(fold_id, replace=FALSE) # permute the order randomly
+reg_err_save_K = rep(0, K)
+lasso_err_save_K = rep(0, K)
+
+for(i in 1:K) {
+  train_set = which(fold_id != i)
+  y_test = college2010_impute$RETURN[-train_set]
+  
+  reg_model = lm(reg_model, data=college2010_impute[train_set,])
+  l_model = lm(LASSOmodel, data=college2010_impute[train_set,])
+  
+  
+  yhat_test_e = predict(reg_model, newdata=college2010_impute[-train_set,])
+  reg_err_save_K[i] = mean((y_test - yhat_test_e)^2)
+  
+  yhat_test_lasso = predict(l_model, newdata=college2010_impute[-train_set,])
+  lasso_err_save_K[i] = mean((y_test - yhat_test_lasso)^2)
+}
+# RMSE
+year = 2010
+table_within <- cbind(year ,sqrt(mean(reg_err_save_K)),sqrt(mean(lasso_err_save_K)))
+x <- c("year", "sug_model_RMSE", "sel_model_RMSE")
+colnames(table_within) <- x
+
+### Finalize prediction model ###
+reg_model_final = lm(reg_model, data=college2010_impute)
+yhat_test_e = predict(reg_model_final, newdata=college2010_impute)
+reg_err_save = mean((college2010_impute$RETURN - yhat_test_e)^2)
+
+l_model_final = lm(LASSOmodel, data=college2010_impute)
+yhat_test_lasso = predict(l_model_final, newdata=college2010_impute)
+lasso_err_save = mean((college2010_impute$RETURN - yhat_test_lasso)^2)
+
+
+####start table to check stability over time###
+table_2 <- data.frame( year , reg_err_save , lasso_err_save)
+
+######### Test stability ##################
+############ 2012 ############
+year = 2012
+
+college2012_impute$RETURN <- (college2012_impute$MN_EARN_WNE_P6 - college2012_impute$COSTT4_A) / college2012_impute$COSTT4_A
+
+#reg_model = lm(reg_model , data=college2012_impute)
+yhat_test_e = predict(reg_model_final, newdata=college2012_impute)
+reg_err_save = mean((college2012_impute$RETURN - yhat_test_e)^2)
+
+#l_model = lm(LASSOmodel, data=college2012_impute)
+yhat_test_lasso = predict(l_model_final, newdata=college2012_impute)
+lasso_err_save = mean((college2012_impute$RETURN - yhat_test_lasso)^2)
+
+#bind RMSE to comparison table
+table_2 <- rbind( table_2 , c(year , reg_err_save , lasso_err_save) )
+
+############ 2013 ############
+year = 2013
+
+college2013_impute$RETURN <- (college2013_impute$MN_EARN_WNE_P6 - college2013_impute$COSTT4_A) / college2013_impute$COSTT4_A
+#reg_model = lm(reg_model , data=college2012_impute)
+yhat_test_e = predict(reg_model_final, newdata=college2013_impute)
+reg_err_save = mean((college2013_impute$RETURN - yhat_test_e)^2)
+
+#l_model = lm(LASSOmodel, data=college2012_impute)
+yhat_test_lasso = predict(l_model_final, newdata=college2013_impute)
+lasso_err_save = mean((college2013_impute$RETURN - yhat_test_lasso)^2)
+
+#bind RMSE to comparison table
+table_2 <- rbind( table_2 , c(year , reg_err_save , lasso_err_save) )
+
+############ 2014 ############
+year = 2014
+#reg_model = lm(reg_model , data=college2012_impute)
+yhat_test_e = predict(reg_model_final, newdata=college2014_impute)
+reg_err_save = mean((college2014_impute$RETURN - yhat_test_e)^2)
+
+#l_model = lm(LASSOmodel, data=college2012_impute)
+yhat_test_lasso = predict(l_model_final, newdata=college2014_impute)
+lasso_err_save = mean((college2014_impute$RETURN - yhat_test_lasso)^2)
+
+#bind RMSE to comparison table
+table_2 <- rbind( table_2 , c(year , reg_err_save , lasso_err_save) )
+```
+
+```{r result, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+##### RESULTs for report #####
+table_1
+table_2
+table_within
+coef(reg_model_final)
+coef(l_model_final)
+reg_table <- summary(reg_model_final)
+lasso_table <- summary(l_model_final)
+```
+#Abstract
+
+It is a common concern for students and parents to choose which colleges to attend and send their kids to. A large body of labor economics literature explains and quantifies that individuals’ education quality affects the workers’ productivity (measure by wages), proving that colleges’ choice matter to students’ future (Card and Krueger, 1996). Besides common features like average faculty salary, ratio of faculty to student, instructional expenditure per student, what else students and parents should look at to know if attending a particular college worth their pennies? My project aims to use LASSO regression to select more colleges’ features from the College Scorecard database to guide students and parents to the most relevant and impactful indicators of a quality college. Furthermore, my model will testify if the proposed measures of college quality in current labor economics are consistent in capturing return on education. The result from 2010 data proves that selectivity and colleges’ expenditure on education (Black and Smith, 2004) are statistically significant and relevant. The set of selected features also recommends these measures, in addition with measures of income earning cohorts, distribution of students’ family income and federal aid status. My simple linear model resulted from LASSO regression’s selected features perform stably through 2012 to 2014 data. The uncertainty of the model is lower than that of Black and Smith suggestion of measuring college’s quality. A few insights I obtain from two models and their predictions are geographical locations and regions, gender, race and age of student body and completion time taken to graduate have miniscule effects on financial returns of attending colleges.
+
+
+#Introduction
+
+Labor economics literature proves that school quality relates to students’ subsequent labor market success. Card and Krueger (Card et. al., 1996) published significant result indicating varying school quality determines individuals’ schooling and future earnings. High school students and parents concerns with choice of school because majority of public attends colleges to secure a finer career with higher paying jobs and greater employment opportunities. Understand this issue, U.S. Department of Education collects, organizes and publishes valuable statistics about entire lists of U.S. post-secondary schools, majority of which are U.S. colleges and universities. The meaningful data is publicly available to retrieve from College Scorecard, a novel database attempting to increase transparency and broaden general information. However, the rich and detailed information provided in College Scorecard overwhelm any students, parents and researchers. Instead, students and parents rely on US News and other information providers to compare schools, while researchers resorting to social experiment, tedious information collecting processes, leaving the information to waste. This project aims to deduce financial returns of attending colleges using College Scorecard’s reported statistics. This is an important issue that matters to high school students to select colleges, parents to decide which colleges for their children’s education and compare its performance to prevailing labor economists’ model relating school qualities with return on education. By mining the data from College Scorecard to capture features that can forecast the future return on education, I want to answer the question that matters to students, parents and academic researchers interested in. Which characteristics of colleges are the most influential indicators for educational investment? After obtaining a set of selected characteristics, I will compare this set to the set of variables typically used in labor economics papers in measuring return on education. I will use Black and Smith’s model (2004) to benchmark my model since they conduct a more recent, verbose research on school quality on labor outcomes. Both models will reduce noise and minimize effort to interpret College Scorecard, by indicating which features matter most in looking at colleges, rendering comprehensive information to broader audience. Only then, the data will be useful to students, parents and researchers who now are informed which variables to attend to when researching a college, and relative estimates of their impacts on colleges’ payoff in job market. 
+
+
+#Methods
+##Brief description of the data set
+College Scorecard published by U.S Department of Education contains college statistics collected from 7416 US colleges, with 1898 variables associated with each college, starting from 1996-1997 cohort to the latest 2016-2017 cohort. The data set measures five major areas of colleges: earnings, completion rate, cost, debt and repayment and access, with each categories sub-divided into racial groups, income quantiles, gender, study fields and various relevant categorical factors
+
+
+##Methodology
+  1. Preprocessing data:
+  Even though the data set contains nearly 1900 variables from five major categories collected from 7149 colleges, some of them have missing values due to unavailability of information, privacy policies and change in definitions over time. I will filter out these variables if they have over 85% of values which are missing. Next, I will filter out colleges with more than 10% of variables with missing values (these colleges can be too small, undergo fiscal problems or choose not to disclose vital information). The filter is necessary to make the data less noisy and counterproductive.
+Remaining categorical variables will be splitted into new columns explained by expository data dictionary maintained by U.S. Department of Education. Since not all variables are reported for 1051 colleges, I need to impute the data set following Don Rubin (Statistical Inference of Missing Values, 2002) methods. Data are missing at random because for some colleges, the variables are reported, but not for others. The missing values after filtering out unreported variables and colleges are only 6.74% of the data but the process of imputation will be long due to robustness in imputation method. I do not utilize mean, mode or median to replace missing values because it reduces variance in data set and distorts the distributions of the variables. Other simple methods like using linear regressions to predict missing values are quick but they introduce bias and incapable of handling categorical variables (Rubin, 2002). In this project, I will utilize miss ranger method, an improvement of random forest algorithm in predicting missing values. It is reasonable efficient in computing time and handling both discrete and continuous variables. Due to file constraints, I must comment out my data preprocessing codes and export all imputed data as inputs for Rmarkdown to knit.
+  
+  2. Regularize data:
+  To analyze the data, I will generate an independent variable, named RETURN. The variable is computed by using the average income earned by former students minus the cost of attendance divided by the cost of attendance reported in the data. The variable carries the similar measure of return on education primarily used in labor economics literature. It also an indicator to address the question concerned students and parents, which school is the best bang for the buck. I will use the mean earnings of students working and not enrolled 6 years after entry (MN_EARN_WNE_P6) as reference for potential earnings and average anual total cost of attendance (COSTT4_A) as reference for cost of attendance.
+To make the data intepretable, I will deploy Lasso regression to eliminate unnecessary variables in the data from the filtered variables after data preprocessing. The first step is to create a sparse matrix to handle multiple categorical variables (geographical locations, cohort gender, race, Title IV status, etc).
+After building design matrix, I run Lasso regression from gamlr library and extract out variables in the Lasso regression impacting the return on education.
+Then I rerun obtained features as targeted regression model explaining the return on education. For data from year 2012 to 2014, I use selected features from LASSO regressions to subset the data and impute missing values again, then predict the outcomes for the simple linear regression model obtained above.
+
+  3. Benchmark test:
+  I will use simpler, more common regression of school quality on return on education based on labor economics literature with selected features of the data set. In this paper, I will adopt Black and Smith suggested regression model (Black and Smith, 105) as a benchmark. Average SAT, average faculty salary, average freshman retention rate are used to predict school quality. Based on common observations, a higher quality school associate with higher income earned by graduates (Black et. al., 109). The explanatory features are explained as follows: SAT scores measure selectivity (peer quality), average faculty salary measure degree school investment to students, and freshman retention rate represents “voting with your feet” measures (Black et. al., 105). Based on this econometric model to measure school quality matching with students’ future earning, I used variables: 
+AVGFACSAL: average faculty salary
+SAT_AVG: average SAT scores of admissions
+RET_FT4: first-time, full-time student retention rate at four-year institutions
+The econometric model to benchmark is:
+RETURN ~ AVGFACSAL + SAT_AVG + RET_FT4
+
+  4. Uncertainty and stability comparison and model interpretations:
+  I intend to test the two models on consecutive years to guarantee its stability and predictive power.
+To examine the model uncertainty, I will conduct K-fold cross validation for 2010 data set, on both suggested model by Black and linear regression with LASSO selected features.
+For year 2012-2014, I will subset data to contain only selected features and redo imputation for all data set. 
+If my model’s root mean squared error is relatively constant through one year to the next, the result implies my model is stable across time. The selected features are relevant and certain.
+If my model’s root mean squared error is relatively lower than Black and Smith model’s, the result implies the selected features are additional in practice to predict financial return of attending a particular college. 
+
+#Results
+The numbers of features selected by LASSO regression with their absolute magnitudes exceeds a certain threshold.
+
+```{r LASSO_coef_number, echo=FALSE, fig.cap="Threshold of coef's magnitude vs Number of coefs exceeds threshold" , fig.align='center'}
+kable(table_1, col.names = c(1:16) , caption = "Table 1: Threshold of coef's magnitude vs Number of coefs exceeds threshold" , padding = 2, align = 'c' )
+```
+
+I balance between complexity of predictive model and complexity of regression variables (number of variables in the simple linear regression. I pick the absolute magnitude of beta coefficients in LASSO regression to be larger than 0.5. The simple regression from the selected features are:
+
+```{r LASSO_model, echo=FALSE}
+LASSOmodel
+```
+
+With reference to the data dictionary supplied by U.S Department of Education, the following features related to return on attending colleges:
+  a. Percentage of degrees awarded in different fields (PCIP12 and PCIP46 represent Personal and Culinary Services)
+  b. Completion of colleges (root COMP stands for completion, with suffix XYR_TRANS_YR2_RT refer to percentage of students transferred to X-year institution and completed them within Y year)
+  c. Transfer movement of students (suffix TRANS_YRX refer to transfer to X year institutions, while prefex LO_INC, DEP_ENRL, FIRSTGEN, PELL indicates low income, dependent, first generation, TitleIV and Pell Grant received students attending colleges)
+  d. Percentage of students earning over $25000/year 6 years after entered college 
+
+Test for uncertainty of the model using 2010 data, compared to the benchmark model
+
+
+```{r within_sampleRMSE, echo=FALSE, fig.align='center' , fig.cap="RMSE for K-fold CV"}
+kable(table_within,  caption = "Table 2: RMSE for K-fold CV" , align = 'c' )
+```
+
+Stability across time
+```{r across_time_RMSE, echo=FALSE, fig.align='center' , fig.cap="RMSE for 2012 - 2014 predictions"}
+kable(table_2,  caption = "Table 3: RMSE across time" , padding = 2, align = 'c' )
+```
+
+The results of linear model from selected variables outperform suggested model adapt from labor economics literature, these features should be included to measures of school quality. Students and parents, and general public should consider these factors too when comparing schools and considering attending colleges
+
+The coefficients estimates of two linear models:
+
+
+1. Black and Smith's suggested model
+
+```{r reg_model, echo=FALSE, fig.align='center' , fig.cap="Coefficients estimates adapted from Black and Smith's model"}
+reg_table <- reg_table["coefficients"]
+kable(reg_table, caption = "Table 4: Coefficients estimates from selected features model", align = 'c')
+```
+
+2. Model from selected features
+
+
+```{r l_model, echo=FALSE, fig.align='center' , fig.cap="Coefficients estimates from selected features model"}
+lasso_table <- lasso_table["coefficients"]
+kable(lasso_table, caption = "Table 5: Coefficients estimates from selected features model", align = 'c')
+```
+
+#Conclusions
+The selected features from data mining concludes that SAT score (measures of colleges’ selectivity), the freshman retainment rate (measures of students’ preferences with the colleges) and average faculty salary (measures of colleges’ inputs into education) are deciding factors determining college qualities. The return on education increases with the percentage of students who received Pell Grant then transfer to 4-year colleges. Interestingly, the contrary is true, too. Students who receives aids but transfer out of the institutions after 8 years implying an adverse outcome on return on colleges. This can be explained by students' preference of colleges. College students with financial struggle will either make the best use of Title IV loans to transfer to better universities or rely on the loan and do not complete degree or dropout. Loan status, transfer movement and withdrawals of student body (transfer out to 2-year or 4-year institutions) tends to significantly explain and predict the return of attending a college. Other factors such as majors, degree types, racial, gender and age distribution of the cohort, and control of an institution(public or private) does not impact the financial return as many students and parents worried. These are accomplishments deserved to be lauded: student loans are effective, but only if the students utilize them. Gender, races, and age are equal in financial returns of attending colleges (as the estimates are 0, implying no impact on the outcomes). An important note to students from high income families. The more rich students attend a college, the lower the financial return on education. It can be explained by higher standard of living in these colleges.
+In my projects, I have not addressed the existence of endogeneity. It may introduce bias to the estimates. However, this is not my primary objective. In this project, my aim is to select a set of meaningful features to help users focus on using the colleges' statistics, a publicly available dataset but often neglected by general public. The features selected will make the data readable to interested audience, indicating users of the more relevant characteristics out of more than 1800 noisy variables. It also provides simple, intuitive understanding of these variables, with positive, negative magnitude represents whether the variables are good or bad in picking colleges. College students and parents can easily predict the average expected financial returns of attending amongst colleges by using the estimates of the variables. 
+
