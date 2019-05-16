@@ -53,7 +53,7 @@ Test for uncertainty of the model using 2010 data, compared to the benchmark mod
 
 | year | sug\_model\_RMSE | sel\_model\_RMSE |
 |:----:|:----------------:|:----------------:|
-| 2010 |     0.7426952    |     0.6212892    |
+| 2010 |     0.7427339    |     0.6250714    |
 
 Stability across time
 
@@ -70,61 +70,66 @@ The coefficients estimates of two linear models:
 
 1.  Black and Smith's suggested model
 
-<table class="kable_wrapper">
-<caption>
-Table 4: Coefficients estimates from selected features model
-</caption>
-<tbody>
-<tr>
-<td>
-|             |  Estimate  | Std. Error |   t value  | Pr(&gt;|t|) |
-|-------------|:----------:|:----------:|:----------:|:-----------:|
-| (Intercept) |  1.8461199 |  0.2998368 |  6.1570821 |  0.0000000  |
-| AVGFACSAL   |  0.0001654 |  0.0000161 | 10.2696393 |  0.0000000  |
-| RET\_FT4    |  0.0223989 |  0.1819445 |  0.1231087 |  0.9020447  |
-| SAT\_AVG    | -0.0017185 |  0.0003630 | -4.7336921 |  0.0000025  |
+<!-- -->
 
-</td>
-</tr>
-</tbody>
-</table>
+    ## $coefficients
+    ##                  Estimate   Std. Error    t value     Pr(>|t|)
+    ## (Intercept)  1.8461198783 2.998368e-01  6.1570821 1.054314e-09
+    ## AVGFACSAL    0.0001653821 1.610399e-05 10.2696393 1.221718e-23
+    ## RET_FT4      0.0223989428 1.819445e-01  0.1231087 9.020447e-01
+    ## SAT_AVG     -0.0017185211 3.630403e-04 -4.7336921 2.507342e-06
+
 1.  Model from selected features
 
-<table class="kable_wrapper">
-<caption>
-Table 5: Coefficients estimates from selected features model
-</caption>
-<tbody>
-<tr>
-<td>
-|                                     |   Estimate  | Std. Error |   t value  | Pr(&gt;|t|) |
-|-------------------------------------|:-----------:|:----------:|:----------:|:-----------:|
-| (Intercept)                         |  -0.2960251 |  0.3835795 | -0.7717439 |  0.4404430  |
-| PCIP12                              |  -0.7535147 |  0.3391333 | -2.2218837 |  0.0265076  |
-| PCIP46                              |  2.5921968  |  1.3795683 |  1.8789912 |  0.0605276  |
-| COMP\_2YR\_TRANS\_YR2\_RT           |  5.4042106  |  6.9428576 |  0.7783842 |  0.4365212  |
-| IND\_WDRAW\_2YR\_TRANS\_YR2\_RT     |  -6.1459422 |  2.3996489 | -2.5611839 |  0.0105730  |
-| NOPELL\_WDRAW\_4YR\_TRANS\_YR2\_RT  |  -1.5439770 |  1.4191526 | -1.0879571 |  0.2768683  |
-| COMP\_2YR\_TRANS\_YR3\_RT           |  3.8816810  |  5.3284422 |  0.7284833 |  0.4664832  |
-| UNKN\_4YR\_TRANS\_YR4\_RT           |  -0.4147358 |  3.1899740 | -0.1300123 |  0.8965821  |
-| DEP\_ENRL\_2YR\_TRANS\_YR4\_RT      |  5.1355197  |  2.6095322 |  1.9679848 |  0.0493375  |
-| LO\_INC\_COMP\_2YR\_TRANS\_YR6\_RT  |  1.1708234  |  4.3950683 |  0.2663948 |  0.7899884  |
-| LOAN\_UNKN\_ORIG\_YR6\_RT           |  8.4113077  |  1.3819711 |  6.0864572 |  0.0000000  |
-| FIRSTGEN\_COMP\_2YR\_TRANS\_YR6\_RT |  14.9282394 |  3.8827292 |  3.8447799 |  0.0001281  |
-| DEP\_WDRAW\_2YR\_TRANS\_YR8\_RT     | -10.8321050 |  1.7980359 | -6.0244099 |  0.0000000  |
-| IND\_WDRAW\_2YR\_TRANS\_YR8\_RT     |  1.9999608  |  2.2504898 |  0.8886780 |  0.3743834  |
-| PELL\_WDRAW\_4YR\_TRANS\_YR8\_RT    |  4.0151942  |  0.8693163 |  4.6187954 |  0.0000043  |
-| IND\_INC\_PCT\_H2                   | -13.7940529 |  1.9715573 | -6.9965265 |  0.0000000  |
-| GT\_25K\_P6                         |  2.0984442  |  0.2857547 |  7.3435162 |  0.0000000  |
-| AVGFACSAL                           |  0.0001065  |  0.0000147 |  7.2288391 |  0.0000000  |
-| SAT\_AVG                            |  -0.0009601 |  0.0003652 | -2.6293583 |  0.0086820  |
-| RET\_FT4                            |  0.2468722  |  0.1728616 |  1.4281496 |  0.1535516  |
+<!-- -->
 
-</td>
-</tr>
-</tbody>
-</table>
+    ## $coefficients
+    ##                                     Estimate   Std. Error    t value
+    ## (Intercept)                    -2.960251e-01 3.835795e-01 -0.7717439
+    ## PCIP12                         -7.535147e-01 3.391333e-01 -2.2218837
+    ## PCIP46                          2.592197e+00 1.379568e+00  1.8789912
+    ## COMP_2YR_TRANS_YR2_RT           5.404211e+00 6.942858e+00  0.7783842
+    ## IND_WDRAW_2YR_TRANS_YR2_RT     -6.145942e+00 2.399649e+00 -2.5611839
+    ## NOPELL_WDRAW_4YR_TRANS_YR2_RT  -1.543977e+00 1.419153e+00 -1.0879571
+    ## COMP_2YR_TRANS_YR3_RT           3.881681e+00 5.328442e+00  0.7284833
+    ## UNKN_4YR_TRANS_YR4_RT          -4.147358e-01 3.189974e+00 -0.1300123
+    ## DEP_ENRL_2YR_TRANS_YR4_RT       5.135520e+00 2.609532e+00  1.9679848
+    ## LO_INC_COMP_2YR_TRANS_YR6_RT    1.170823e+00 4.395068e+00  0.2663948
+    ## LOAN_UNKN_ORIG_YR6_RT           8.411308e+00 1.381971e+00  6.0864572
+    ## FIRSTGEN_COMP_2YR_TRANS_YR6_RT  1.492824e+01 3.882729e+00  3.8447799
+    ## DEP_WDRAW_2YR_TRANS_YR8_RT     -1.083210e+01 1.798036e+00 -6.0244099
+    ## IND_WDRAW_2YR_TRANS_YR8_RT      1.999961e+00 2.250490e+00  0.8886780
+    ## PELL_WDRAW_4YR_TRANS_YR8_RT     4.015194e+00 8.693163e-01  4.6187954
+    ## IND_INC_PCT_H2                 -1.379405e+01 1.971557e+00 -6.9965265
+    ## GT_25K_P6                       2.098444e+00 2.857547e-01  7.3435162
+    ## AVGFACSAL                       1.065232e-04 1.473586e-05  7.2288391
+    ## SAT_AVG                        -9.601262e-04 3.651561e-04 -2.6293583
+    ## RET_FT4                         2.468722e-01 1.728616e-01  1.4281496
+    ##                                    Pr(>|t|)
+    ## (Intercept)                    4.404430e-01
+    ## PCIP12                         2.650762e-02
+    ## PCIP46                         6.052761e-02
+    ## COMP_2YR_TRANS_YR2_RT          4.365212e-01
+    ## IND_WDRAW_2YR_TRANS_YR2_RT     1.057297e-02
+    ## NOPELL_WDRAW_4YR_TRANS_YR2_RT  2.768683e-01
+    ## COMP_2YR_TRANS_YR3_RT          4.664832e-01
+    ## UNKN_4YR_TRANS_YR4_RT          8.965821e-01
+    ## DEP_ENRL_2YR_TRANS_YR4_RT      4.933746e-02
+    ## LO_INC_COMP_2YR_TRANS_YR6_RT   7.899884e-01
+    ## LOAN_UNKN_ORIG_YR6_RT          1.625809e-09
+    ## FIRSTGEN_COMP_2YR_TRANS_YR6_RT 1.280513e-04
+    ## DEP_WDRAW_2YR_TRANS_YR8_RT     2.358971e-09
+    ## IND_WDRAW_2YR_TRANS_YR8_RT     3.743834e-01
+    ## PELL_WDRAW_4YR_TRANS_YR8_RT    4.347158e-06
+    ## IND_INC_PCT_H2                 4.715800e-12
+    ## GT_25K_P6                      4.218255e-13
+    ## AVGFACSAL                      9.473373e-13
+    ## SAT_AVG                        8.681956e-03
+    ## RET_FT4                        1.535516e-01
+
+From the two coefficients tables, we observe that average faculty salary (represents colleges' input) and average SAT score (represents selectivity) are statistically significant. Both models agree on the same effects of the two measures, with more spending on faculty enhance financial returns of attending colleges for students (improve teaching quality) and the more selective a college, the less return students received in future earnings. There are two hypotheses can account for this phenomenon. Elite schools have high tuition and living costs due to their popularity, but earnings by cohorts do not compensate for the high price, or attending a lower cost, less selective college to obtain a degree promise better return. Besides, the suggested measure of "voting with your feet" freshman retention rate is not statistically significant. This can be explained by selected features: the measure of college preference is decomposed to students' transfer movements across 2-year, 3-year and 4-year colleges, whether they completed or drop out of these transferred institutions and their background (Title IV, Pell Grant recipients, first generations to go to college, low income families). The completion rate of colleges are important, implying complete program in colleges increase future earning of workers by improving their qualities and skills. Other noisy variables have been filtered out are geographical locations, control of institution (public/private/non-profit), gender and race of students. These seemingly important factors turn out to have negligible to zero effect on financial return of attending colleges
+
 Conclusions
 ===========
 
-The selected features from data mining concludes that SAT score (measures of colleges’ selectivity), the freshman retainment rate (measures of students’ preferences with the colleges) and average faculty salary (measures of colleges’ inputs into education) are deciding factors determining college qualities. The return on education increases with the percentage of students who received Pell Grant then transfer to 4-year colleges. Interestingly, the contrary is true, too. Students who receives aids but transfer out of the institutions after 8 years implying an adverse outcome on return on colleges. This can be explained by students' preference of colleges. College students with financial struggle will either make the best use of Title IV loans to transfer to better universities or rely on the loan and do not complete degree or dropout. Loan status, transfer movement and withdrawals of student body (transfer out to 2-year or 4-year institutions) tends to significantly explain and predict the return of attending a college. Other factors such as majors, degree types, racial, gender and age distribution of the cohort, and control of an institution(public or private) does not impact the financial return as many students and parents worried. These are accomplishments deserved to be lauded: student loans are effective, but only if the students utilize them. Gender, races, and age are equal in financial returns of attending colleges (as the estimates are 0, implying no impact on the outcomes). An important note to students from high income families. The more rich students attend a college, the lower the financial return on education. It can be explained by higher standard of living in these colleges. In my projects, I have not addressed the existence of endogeneity. It may introduce bias to the estimates. However, this is not my primary objective. In this project, my aim is to select a set of meaningful features to help users focus on using the colleges' statistics, a publicly available dataset but often neglected by general public. The features selected will make the data readable to interested audience, indicating users of the more relevant characteristics out of more than 1800 noisy variables. It also provides simple, intuitive understanding of these variables, with positive, negative magnitude represents whether the variables are good or bad in picking colleges. College students and parents can easily predict the average expected financial returns of attending amongst colleges by using the estimates of the variables.
+The selected features from data mining concludes that SAT score (measures of colleges’ selectivity), the freshman retainment rate (measures of students’ preferences with the colleges) and average faculty salary (measures of colleges’ inputs into education) are deciding factors in determining college qualities. The return on education increases with the percentage of students who received Pell Grant then transfer to 4-year colleges. Interestingly, the contrary is true, too. Students who receives aids but transfer out of the institutions after 8 years implying an adverse outcome on return on colleges. This can be explained by students' preference of colleges. College students with financial struggle will either make the best use of Title IV loans to transfer to better universities or rely on the loan and do not complete degree or dropout. Loan status, transfer movement and withdrawals of student body (transfer out to 2-year or 4-year institutions) tends to significantly explain and predict the return of attending a college. Other factors such as majors, degree types, racial, gender and age distribution of the cohort, and control of an institution(public or private) does not impact the financial return as many students and parents worried. These are accomplishments deserved to be lauded: student loans are effective, but only if the students utilize them. Gender, races, and age are equal in financial returns of attending colleges (The estimates from LASSO regression are 0 and filtered out by regularization process, implying no impact on the outcomes based on 2010 data). In my projects, I have not addressed the existence of endogeneity. It may introduce bias to the estimates. However, this is not my primary objective. In this project, my aim is to select a set of meaningful features to help users focus on using the colleges' statistics, a publicly available dataset but often neglected by general public. The features selected will make the data readable to interested audience, indicating users of the more relevant characteristics out of more than 1800 noisy variables. It also provides simple, intuitive understanding of these variables, with positive, negative magnitude represents whether the variables are good or bad in picking colleges. College students and parents can easily predict the average expected financial returns of attending amongst colleges by using the estimates of the variables.
