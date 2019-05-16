@@ -260,7 +260,7 @@ If my model’s root mean squared error is relatively lower than Black and Smith
 The numbers of features selected by LASSO regression with their absolute magnitudes exceeds a certain threshold.
 
 ```{r LASSO_coef_number, echo=FALSE, fig.cap="Threshold of coef's magnitude vs Number of coefs exceeds threshold" , fig.align='center'}
-kable(table_1, col.names = c(1:16) , caption = "Table 1: Threshold of coef's magnitude vs Number of coefs exceeds threshold" , padding = 2, align = 'c' )
+kable(table_1, col.names = c(1:16) , caption = "Table 1: Threshold of coef's magnitude vs Number of coefs exceeds threshold" , padding = 2, align = 'c' , format = 'pandoc')
 ```
 
 I balance between complexity of predictive model and complexity of regression variables (number of variables in the simple linear regression. I pick the absolute magnitude of beta coefficients in LASSO regression to be larger than 0.5. The simple regression from the selected features are:
@@ -279,12 +279,12 @@ Test for uncertainty of the model using 2010 data, compared to the benchmark mod
 
 
 ```{r within_sampleRMSE, echo=FALSE, fig.align='center' , fig.cap="RMSE for K-fold CV"}
-kable(table_within,  caption = "Table 2: RMSE for K-fold CV" , align = 'c' )
+kable(table_within,  caption = "Table 2: RMSE for K-fold CV" , align = 'c', format = 'pandoc' )
 ```
 
 Stability across time
 ```{r across_time_RMSE, echo=FALSE, fig.align='center' , fig.cap="RMSE for 2012 - 2014 predictions"}
-kable(table_2,  caption = "Table 3: RMSE across time" , padding = 2, align = 'c' )
+kable(table_2,  caption = "Table 3: RMSE across time" , padding = 2, align = 'c', format = 'pandoc' )
 ```
 
 The results of linear model from selected variables outperform suggested model adapt from labor economics literature, these features should be included to measures of school quality. Students and parents, and general public should consider these factors too when comparing schools and considering attending colleges
@@ -295,19 +295,27 @@ The coefficients estimates of two linear models:
 1. Black and Smith's suggested model
 
 ```{r reg_model, echo=FALSE, fig.align='center' , fig.cap="Coefficients estimates adapted from Black and Smith's model"}
-reg_table <- reg_table["coefficients"]
-kable(reg_table, caption = "Table 4: Coefficients estimates from selected features model", align = 'c')
+reg_table <- as.data.frame(reg_table["coefficients"])
+kable(reg_table , caption = "Table 4: Coefficients estimates adapted from Black and Smith's model" , align = 'l', format = 'pandoc')
 ```
 
 2. Model from selected features
 
 
+
 ```{r l_model, echo=FALSE, fig.align='center' , fig.cap="Coefficients estimates from selected features model"}
-lasso_table <- lasso_table["coefficients"]
-kable(lasso_table, caption = "Table 5: Coefficients estimates from selected features model", align = 'c')
+lasso_table <- as.data.frame(lasso_table["coefficients"])
+kable(lasso_table , caption = "Table 5: Coefficients estimates from selected features model" , align = 'l' , padding = 2, format = 'pandoc')
 ```
 
+
+
+
+From the two coefficients tables, we observe that average faculty salary (represents colleges' input) and average SAT score (represents selectivity) are statistically significant. Both models agree on the same effects of the two measures, with more spending on faculty enhance financial returns of attending colleges for students (improve teaching quality) and the more selective a college, the less return students received in future earnings. There are two hypotheses can account for this phenomenon. Elite schools have high tuition and living costs due to their popularity, but earnings by cohorts do not compensate for the high price, or attending a lower cost, less selective college to obtain a degree promise better return. Besides, the suggested measure of "voting with your feet" freshman retention rate is not statistically significant. This can be explained by selected features: the measure of college preference is decomposed to students' transfer movements across 2-year, 3-year and 4-year colleges, whether they completed or drop out of these transferred institutions and their background (Title IV, Pell Grant recipients, first generations to go to college, low income families). The completion rate of colleges are important, implying complete program in colleges increase future earning of workers by improving their qualities and skills.
+Other noisy variables have been filtered out are geographical locations, control of institution (public/private/non-profit), gender and race of students. These seemingly important factors turn out to have negligible to zero effect on financial return of attending colleges
+
+
 #Conclusions
-The selected features from data mining concludes that SAT score (measures of colleges’ selectivity), the freshman retainment rate (measures of students’ preferences with the colleges) and average faculty salary (measures of colleges’ inputs into education) are deciding factors determining college qualities. The return on education increases with the percentage of students who received Pell Grant then transfer to 4-year colleges. Interestingly, the contrary is true, too. Students who receives aids but transfer out of the institutions after 8 years implying an adverse outcome on return on colleges. This can be explained by students' preference of colleges. College students with financial struggle will either make the best use of Title IV loans to transfer to better universities or rely on the loan and do not complete degree or dropout. Loan status, transfer movement and withdrawals of student body (transfer out to 2-year or 4-year institutions) tends to significantly explain and predict the return of attending a college. Other factors such as majors, degree types, racial, gender and age distribution of the cohort, and control of an institution(public or private) does not impact the financial return as many students and parents worried. These are accomplishments deserved to be lauded: student loans are effective, but only if the students utilize them. Gender, races, and age are equal in financial returns of attending colleges (as the estimates are 0, implying no impact on the outcomes). An important note to students from high income families. The more rich students attend a college, the lower the financial return on education. It can be explained by higher standard of living in these colleges.
+The selected features from data mining concludes that SAT score (measures of colleges’ selectivity), the freshman retainment rate (measures of students’ preferences with the colleges) and average faculty salary (measures of colleges’ inputs into education) are deciding factors in determining college qualities. The return on education increases with the percentage of students who received Pell Grant then transfer to 4-year colleges. Interestingly, the contrary is true, too. Students who receives aids but transfer out of the institutions after 8 years implying an adverse outcome on return on colleges. This can be explained by students' preference of colleges. College students with financial struggle will either make the best use of Title IV loans to transfer to better universities or rely on the loan and do not complete degree or dropout. Loan status, transfer movement and withdrawals of student body (transfer out to 2-year or 4-year institutions) tends to significantly explain and predict the return of attending a college. Other factors such as majors, degree types, racial, gender and age distribution of the cohort, and control of an institution(public or private) does not impact the financial return as many students and parents worried. These are accomplishments deserved to be lauded: student loans are effective, but only if the students utilize them. Gender, races, and age are equal in financial returns of attending colleges (The estimates from LASSO regression are 0 and filtered out by regularization process, implying no impact on the outcomes based on 2010 data). 
 In my projects, I have not addressed the existence of endogeneity. It may introduce bias to the estimates. However, this is not my primary objective. In this project, my aim is to select a set of meaningful features to help users focus on using the colleges' statistics, a publicly available dataset but often neglected by general public. The features selected will make the data readable to interested audience, indicating users of the more relevant characteristics out of more than 1800 noisy variables. It also provides simple, intuitive understanding of these variables, with positive, negative magnitude represents whether the variables are good or bad in picking colleges. College students and parents can easily predict the average expected financial returns of attending amongst colleges by using the estimates of the variables. 
 
