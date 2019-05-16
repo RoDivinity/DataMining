@@ -47,13 +47,13 @@ I balance between complexity of predictive model and complexity of regression va
     ##     PELL_WDRAW_4YR_TRANS_YR8_RT + IND_INC_PCT_H2 + GT_25K_P6 + 
     ##     AVGFACSAL + SAT_AVG + RET_FT4
 
-With reference to the data dictionary supplied by U.S Department of Education, the following features related to return on attending colleges: a. Percentage of degrees awarded in different fields (PCIP12 and PCIP46 represent Personal and Culinary Services) b. Completion of colleges (root COMP stands for completion, with suffix XYR\_TRANS\_YR2\_RT refer to percentage of students transferred to X-year institution and completed them within Y year) c. Transfer movement of students (suffix TRANS\_YRX refer to transfer to X year institutions, while prefex LO\_INC, DEP\_ENRL, FIRSTGEN, PELL indicates low income, dependent, first generation, TitleIV and Pell Grant received students attending colleges) d. Percentage of students earning over $25000/year 6 years after entered college
+With reference to the data dictionary supplied by U.S Department of Education, the following features related to return on attending colleges: 1. Percentage of degrees awarded in different fields (PCIP12 and PCIP46 represent Personal and Culinary Services) 2. Completion of colleges (root COMP stands for completion, with suffix XYR\_TRANS\_YR2\_RT refer to percentage of students transferred to X-year institution and completed them within Y year) 3. Transfer movement of students (suffix TRANS\_YRX refer to transfer to X year institutions, while prefex LO\_INC, DEP\_ENRL, FIRSTGEN, PELL indicates low income, dependent, first generation, TitleIV and Pell Grant received students attending colleges) 4. Percentage of students earning over $25000/year 6 years after entered college
 
 Test for uncertainty of the model using 2010 data, compared to the benchmark model
 
 | year | sug\_model\_RMSE | sel\_model\_RMSE |
 |:----:|:----------------:|:----------------:|
-| 2010 |     0.7435929    |     0.6235152    |
+| 2010 |     0.7431249    |     0.6218201    |
 
 The K-fold cross validation's RMSE of featured regression is smaller compated to that of suggested model in economic literature. This result strengthens the support of adding these features to final model.
 
@@ -121,3 +121,12 @@ Reference
 2.  Card, D. & Krueger, A. B. (1996): Labor market effects of school quality: Theory and Evidence. NEBR Working Paper, 5450.
 
 3.  Rubin, D. A. & Little, R. J. A. (2002): Statistical analysis with missing data (2nd edition). Wiley Series in Probabilities and Statistics. <DOI:10.1002/9781119013563>
+
+Appendix
+--------
+
+Attach in the .Rmd are my R code to preprocess the data. Since the original data set is large, and computation for imputing the data set is slow, Rmarkdown compiling time and power do not allow me to add them to the script. Therefore I embed the code in .Rmd file. If you are interested, or want to verify the integrity of my work on imputation, here the code to reproduce original CSV file (&gt;200 Mb) to my imputed CSV file
+
+I repeat this process for other data sets as well, by changing 2010 to xxxx corresponding to the year of the data set. The imputation process is really exhausting.
+
+But finally I finished this project and graduated from Master. I really enjoy your class and learn so much from you and your materials. I still think your homework sets are the best, especially the ones in statistics class in the summer.
